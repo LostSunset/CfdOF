@@ -61,7 +61,8 @@ fi
 # Detect availability of 'internal' patch type
 if which foamInfo > /dev/null && foamInfo internalFvPatchField > /dev/null 2>&1
 then
-    echo "type internal;" > 0/helperPatchFieldType
+    mkdir -p 0/include
+    echo "type internal;" > 0/include/helperPatchFieldType
     echo "type internal;" > system/helperPatchType
 else
     echo "type fixedValue;" > 0/helperPatchFieldType
