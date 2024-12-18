@@ -201,15 +201,10 @@ class ViewProviderCfdMesh:
         self.Object = vobj.Object
 
     def updateData(self, obj, prop):
-        gui_doc = FreeCADGui.getDocument(obj.Document)
         analysis_obj = CfdTools.getParentAnalysisObject(obj)
-        num_refinement_objs = CfdTools.getMeshRefinementObjs(obj)
+        num_refinement_objs = len(CfdTools.getMeshRefinementObjs(obj))
         num_dyn_refinement_objs = (0 if CfdTools.getDynamicMeshAdaptation(obj) is None else 1)
-        # Ignore this notification since already accounted for during editing of
-        # properties themselves
-        if prop == "_GroupTouched":
-            return
-        elif prop == "Group":
+        if prop == "Group":
             if analysis_obj and not analysis_obj.Proxy.loading:
                 if num_refinement_objs != self.num_refinement_objs:
                     analysis_obj.NeedsMeshRewrite = True
@@ -220,10 +215,17 @@ class ViewProviderCfdMesh:
             self.num_dyn_refinement_objs = num_dyn_refinement_objs
         else:
             if analysis_obj and not analysis_obj.Proxy.loading:
-                analysis_obj.NeedsMeshRewrite = True
+                if prop == "_GroupTouched":
+                    if (analysis_obj and analysis_obj.Proxy.ignore_next_grouptouched):
+                        analysis_obj.Proxy.ignore_next_grouptouched = False
+                    else:
+                        analysis_obj.NeedsMeshRewrite = True
+                else:
+                    analysis_obj.NeedsMeshRewrite = True
 
     def onChanged(self, vobj, prop):
-        CfdTools.setCompSolid(vobj)
+        #CfdTools.setCompSolid(vobj)
+        return
 
     def setEdit(self, vobj, mode):
         for obj in FreeCAD.ActiveDocument.Objects:

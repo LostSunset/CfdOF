@@ -236,8 +236,6 @@ class TaskPanelCfdMesh:
         self.consoleMessage(message)
 
     def checkMeshClicked(self):
-        if CfdTools.getFoamRuntime() == "PosixDocker":
-            CfdTools.startDocker()
         self.Start = time.time()
         try:
             QApplication.setOverrideCursor(Qt.WaitCursor)
@@ -285,9 +283,6 @@ class TaskPanelCfdMesh:
         CfdTools.openFileManager(case_path)
 
     def runMesh(self):
-        if CfdTools.getFoamRuntime() == "PosixDocker":
-            CfdTools.startDocker()
-
         self.Start = time.time()
 
         # Check for changes that require mesh re-write
@@ -347,6 +342,13 @@ class TaskPanelCfdMesh:
             QApplication.restoreOverrideCursor()
 
     def killMeshProcess(self):
+        if CfdTools.getFoamRuntime() == "PosixDocker":
+            FreeCADGui.doCommand("from CfdOF import CfdConsoleProcess")
+            FreeCADGui.doCommand("cmd = CfdTools.makeRunCommand('killall Allmesh', None, source_env=False)")
+            FreeCADGui.doCommand("env_vars = CfdTools.getRunEnvironment()")
+            FreeCADGui.doCommand("kill_process = CfdConsoleProcess.CfdConsoleProcess()\n" +
+                                 "kill_process.start(cmd, env_vars=env_vars)\n" +
+                                 "kill_process.waitForFinished()\n" )
         self.consoleMessage("Meshing manually stopped")
         self.error_message = 'Meshing interrupted'
         self.mesh_obj.Proxy.mesh_process.terminate()
@@ -361,6 +363,7 @@ class TaskPanelCfdMesh:
         print_err = self.mesh_obj.Proxy.mesh_process.processErrorOutput(lines)
         if print_err is not None:
             self.consoleMessage(print_err, 'Error')
+            self.check_mesh_error = True
 
     def meshFinished(self, exit_code):
         if exit_code == 0:
@@ -399,7 +402,8 @@ class TaskPanelCfdMesh:
         prev_write_mesh = self.analysis_obj.NeedsMeshRewrite
         self.mesh_obj.Proxy.cart_mesh.loadSurfMesh()
         self.analysis_obj.NeedsMeshRewrite = prev_write_mesh
-        self.consoleMessage('Triangulated representation of the surface mesh is shown - ', timed=False)
+        self.analysis_obj.Proxy.ignore_next_grouptouched = True
+        self.consoleMessage("Triangulated representation of the surface mesh is shown - ", timed=False)
         self.consoleMessage("Please use Paraview for full mesh visualisation.\n", timed=False)
 
     def pbClearMeshClicked(self):
@@ -408,6 +412,7 @@ class TaskPanelCfdMesh:
             if m.isDerivedFrom("Fem::FemMeshObject"):
                 FreeCAD.ActiveDocument.removeObject(m.Name)
         self.analysis_obj.NeedsMeshRewrite = prev_write_mesh
+        self.analysis_obj.Proxy.ignore_next_grouptouched = True
         FreeCAD.ActiveDocument.recompute()
 
     def searchPointInMesh(self):
